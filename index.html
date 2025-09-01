@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wert.io Fiat Onramp</title>
+    <title>Crypto Purchase Portal</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <header class="header">
             <h1>Crypto Purchase Portal</h1>
-            <p>Buy cryptocurrency with your credit card or bank transfer</p>
+            <p>Buy cryptocurrency securely with your credit card or bank transfer</p>
         </header>
 
         <main class="main-content">
@@ -20,33 +20,19 @@
                     <p>Secure and instant crypto purchases powered by Wert</p>
                 </div>
 
-                <div class="purchase-options">
-                    <div class="option-card active" data-currency="BTC">
-                        <div class="crypto-icon">₿</div>
-                        <h3>Bitcoin</h3>
-                        <p>BTC</p>
-                    </div>
-                    <div class="option-card" data-currency="ETH">
-                        <div class="crypto-icon">Ξ</div>
-                        <h3>Ethereum</h3>
-                        <p>ETH</p>
-                    </div>
-                    <div class="option-card" data-currency="USDC">
-                        <div class="crypto-icon">$</div>
-                        <h3>USD Coin</h3>
-                        <p>USDC</p>
-                    </div>
-                </div>
-
-                <div class="widget-controls">
+                <div class="purchase-form">
                     <div class="input-group">
-                        <label for="wallet-address">Wallet Address</label>
+                        <label for="wallet-address">Bitcoin Wallet Address</label>
                         <input 
                             type="text" 
                             id="wallet-address" 
-                            placeholder="Enter your wallet address"
+                            placeholder="Enter your Bitcoin wallet address"
                             class="wallet-input"
+                            value="39zC2iwMf6qzmVVEcBdfXG6WpVn84Mwxzv"
                         >
+                        <div class="input-help">
+                            Your Bitcoin will be sent to this address
+                        </div>
                     </div>
 
                     <div class="input-group">
@@ -57,14 +43,32 @@
                             placeholder="100"
                             min="50"
                             max="10000"
+                            value="100"
                             class="amount-input"
                         >
+                        <div class="input-help">
+                            Minimum: $50 • Maximum: $10,000
+                        </div>
                     </div>
 
-                    <button id="open-widget" class="purchase-btn">
-                        <span class="btn-text">Buy Cryptocurrency</span>
+                    <div class="input-group">
+                        <label for="user-email">Email Address</label>
+                        <input 
+                            type="email" 
+                            id="user-email" 
+                            placeholder="your.email@example.com"
+                            class="email-input"
+                        >
+                        <div class="input-help">
+                            Required for transaction notifications
+                        </div>
+                    </div>
+
+                    <button id="purchase-btn" class="purchase-btn">
+                        <span class="btn-text">Buy Bitcoin</span>
                         <div class="btn-loader hidden">
                             <div class="spinner"></div>
+                            <span>Creating secure session...</span>
                         </div>
                     </button>
                 </div>
@@ -86,17 +90,22 @@
                     <div class="feature">
                         <span class="feature-icon">⚡</span>
                         <h4>Instant Processing</h4>
-                        <p>Receive your crypto within minutes</p>
+                        <p>Receive your Bitcoin within minutes of payment confirmation</p>
                     </div>
                     <div class="feature">
                         <span class="feature-icon">🔒</span>
                         <h4>Bank-Level Security</h4>
-                        <p>Your data and funds are protected</p>
+                        <p>Your personal and financial data is encrypted and protected</p>
                     </div>
                     <div class="feature">
                         <span class="feature-icon">💳</span>
                         <h4>Multiple Payment Methods</h4>
-                        <p>Credit card, debit card, and bank transfer</p>
+                        <p>Credit card, debit card, and bank transfer supported</p>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">🌍</span>
+                        <h4>Global Coverage</h4>
+                        <p>Available in 100+ countries worldwide</p>
                     </div>
                 </div>
             </div>
@@ -106,6 +115,15 @@
             <div class="overlay-content">
                 <button id="close-overlay" class="close-btn">&times;</button>
                 <div id="wert-widget-container"></div>
+            </div>
+        </div>
+
+        <div id="error-modal" class="error-modal hidden">
+            <div class="error-content">
+                <div class="error-icon">⚠️</div>
+                <h3>Transaction Error</h3>
+                <p id="error-message"></p>
+                <button id="close-error" class="error-close-btn">Close</button>
             </div>
         </div>
     </div>

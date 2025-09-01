@@ -2,29 +2,21 @@ import WertWidget from '@wert-io/widget-initializer';
 
 class WertIntegration {
     constructor() {
-        this.selectedCurrency = 'BTC';
         this.wertWidget = null;
+        this.apiBaseUrl = 'https://your-railway-app.railway.app'; // Replace with your Railway app URL
         this.init();
     }
 
     init() {
         this.setupEventListeners();
-        this.updateUI();
+        this.validateInputs();
     }
 
     setupEventListeners() {
-        // Currency selection
-        const optionCards = document.querySelectorAll('.option-card');
-        optionCards.forEach(card => {
-            card.addEventListener('click', (e) => {
-                this.selectCurrency(e.currentTarget);
-            });
-        });
-
         // Purchase button
-        const purchaseBtn = document.getElementById('open-widget');
+        const purchaseBtn = document.getElementById('purchase-btn');
         purchaseBtn.addEventListener('click', () => {
-            this.openWertWidget();
+            this.initiatePurchase();
         });
 
         // Close overlay
@@ -41,63 +33,122 @@ class WertIntegration {
             }
         });
 
+        // Error modal
+        const closeErrorBtn = document.getElementById('close-error');
+        closeErrorBtn.addEventListener('click', () => {
+            this.hideErrorModal();
+        });
+
         // Input validation
-        const walletInput = document.getElementById('wallet-address');
-        const amountInput = document.getElementById('purchase-amount');
-
-        walletInput.addEventListener('input', () => {
-            this.validateInputs();
+        const inputs = ['wallet-address', 'purchase-amount', 'user-email'];
+        inputs.forEach(inputId => {
+            const input = document.getElementById(inputId);
+            input.addEventListener('input', () => {
+                this.validateInputs();
+            });
         });
-
-        amountInput.addEventListener('input', () => {
-            this.validateInputs();
-        });
-    }
-
-    selectCurrency(selectedCard) {
-        // Remove active class from all cards
-        document.querySelectorAll('.option-card').forEach(card => {
-            card.classList.remove('active');
-        });
-
-        // Add active class to selected card
-        selectedCard.classList.add('active');
-        this.selectedCurrency = selectedCard.dataset.currency;
-        this.updateUI();
     }
 
     validateInputs() {
         const walletAddress = document.getElementById('wallet-address').value.trim();
         const amount = document.getElementById('purchase-amount').value;
-        const purchaseBtn = document.getElementById('open-widget');
+        const email = document.getElementById('user-email').value.trim();
+        const purchaseBtn = document.getElementById('purchase-btn');
 
-        const isValid = walletAddress.length > 0 && amount >= 50 && amount <= 10000;
+        const isValidWallet = this.validateBitcoinAddress(walletAddress);
+        const isValidAmount = amount >= 50 && amount <= 10000;
+        const isValidEmail = this.validateEmail(email);
+
+        const isValid = isValidWallet && isValidAmount && isValidEmail;
         purchaseBtn.disabled = !isValid;
+
+        return isValid;
     }
 
-    updateUI() {
-        this.validateInputs();
+    validateBitcoinAddress(address) {
+        // Basic Bitcoin address validation
+        const btcRegex = /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$|^bc1[a-z0-9]{39,59}$/;
+        return btcRegex.test(address);
     }
 
-    async openWertWidget() {
-        const walletAddress = document.getElementById('wallet-address').value.trim();
-        const amount = document.getElementById('purchase-amount').value;
+    validateEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
 
-        if (!walletAddress || !amount) {
-            alert('Please fill in all required fields');
+    async initiatePurchase() {
+        if (!this.validateInputs()) {
+            this.showError('Please fill in all fields correctly');
             return;
         }
 
         this.showLoader(true);
 
         try {
-            // Generate a unique session ID (in production, get this from your backend)
-            const sessionId = this.generateSessionId();
+            const sessionData = await this.createWertSession();
+            await this.openWertWidget(sessionData.session_id);
+        } catch (error) {
+            console.error('Error initiating purchase:', error);
+            this.showLoader(false);
+            this.showError(error.message || 'Failed to initialize payment. Please try again.');
+        }
+    }
 
+    async createWertSession() {
+        const walletAddress = document.getElementById('wallet-address').value.trim();
+        const amount = document.getElementById('purchase-amount').value;
+        const email = document.getElementById('user-email').value.trim();
+
+        const sessionData = {
+            partner_id: "01K1T8VJJ8TY67M49FDXY865GF",
+            origin: "https://widget.wert.io",
+            commodity: "BTC",
+            commodity_amount: this.calculateBtcAmount(amount),
+            fiat_currency: "USD",
+            fiat_amount: parseFloat(amount),
+            network: "bitcoin",
+            address: walletAddress,
+            user_email: email,
+            extra: {
+                wallets: [
+                    {
+                        name: "BTC",
+                        network: "bitcoin",
+                        address: walletAddress
+                    }
+                ]
+            }
+        };
+
+        const response = await fetch(`${this.apiBaseUrl}/api/create-wert-session`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(sessionData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    }
+
+    calculateBtcAmount(usdAmount) {
+        // In production, get real-time BTC price from your backend
+        // This is a simplified calculation
+        const btcPriceUsd = 45000; // Example price
+        return (parseFloat(usdAmount) / btcPriceUsd).toFixed(8);
+    }
+
+    async openWertWidget(sessionId) {
+        try {
             const options = {
-                partner_id: 'YOUR_PARTNER_ID', // Replace with your actual partner ID
+                partner_id: "01K1T8VJJ8TY67M49FDXY865GF",
                 container_id: 'wert-widget-container',
-                click_id: sessionId,
+                session_id: sessionId,
                 origin: 'https://widget.wert.io',
                 theme: 'light',
                 color_buttons: '#667eea',
@@ -110,21 +161,9 @@ class WertIntegration {
                 color_warning: '#ed8936',
                 color_error: '#f56565',
                 
-                // Transaction parameters
-                commodity: this.selectedCurrency,
-                commodity_amount: this.getCommodityAmount(amount),
-                network: this.getNetworkForCurrency(this.selectedCurrency),
-                address: walletAddress,
-                
-                // Additional options
-                auto_redirect: false,
-                hide_address: false,
-                hide_amount: false,
-                
-                // Listeners for widget events
                 listeners: {
                     loaded: () => {
-                        console.log('Wert widget loaded');
+                        console.log('Wert widget loaded successfully');
                         this.showLoader(false);
                         this.showOverlay(true);
                     },
@@ -135,10 +174,10 @@ class WertIntegration {
                     error: (error) => {
                         console.error('Wert widget error:', error);
                         this.showLoader(false);
-                        alert('Error loading payment widget. Please try again.');
+                        this.showError('Payment widget error. Please try again.');
                     },
                     payment_status: (data) => {
-                        console.log('Payment status:', data);
+                        console.log('Payment status update:', data);
                         this.handlePaymentStatus(data);
                     }
                 }
@@ -148,36 +187,10 @@ class WertIntegration {
             this.wertWidget.open();
 
         } catch (error) {
-            console.error('Error initializing Wert widget:', error);
+            console.error('Error opening Wert widget:', error);
             this.showLoader(false);
-            alert('Error initializing payment widget. Please try again.');
+            this.showError('Failed to open payment widget. Please try again.');
         }
-    }
-
-    generateSessionId() {
-        return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    }
-
-    getCommodityAmount(usdAmount) {
-        // In production, you would get real-time exchange rates
-        // This is a simplified example
-        const exchangeRates = {
-            'BTC': 0.000025, // Approximate BTC per USD
-            'ETH': 0.0004,   // Approximate ETH per USD
-            'USDC': 1        // 1:1 for stablecoin
-        };
-
-        return (parseFloat(usdAmount) * exchangeRates[this.selectedCurrency]).toFixed(8);
-    }
-
-    getNetworkForCurrency(currency) {
-        const networks = {
-            'BTC': 'bitcoin',
-            'ETH': 'ethereum',
-            'USDC': 'ethereum'
-        };
-
-        return networks[currency] || 'ethereum';
     }
 
     handlePaymentStatus(data) {
@@ -187,32 +200,34 @@ class WertIntegration {
                 break;
             case 'success':
                 console.log('Payment successful!');
-                this.showSuccessMessage();
+                this.showSuccessMessage(data);
                 break;
             case 'failed':
                 console.log('Payment failed');
-                this.showErrorMessage();
+                this.showError('Payment failed. Please try again or contact support.');
                 break;
             default:
-                console.log('Unknown payment status:', data.status);
+                console.log('Payment status update:', data.status);
         }
     }
 
-    showSuccessMessage() {
-        // You can customize this success handling
-        alert('Payment successful! Your cryptocurrency will be sent to your wallet shortly.');
+    showSuccessMessage(data) {
+        alert(`Payment successful! Transaction ID: ${data.tx_id || 'N/A'}\n\nYour Bitcoin will be sent to your wallet shortly.`);
         this.closeWidget();
+        this.resetForm();
     }
 
-    showErrorMessage() {
-        // You can customize this error handling
-        alert('Payment failed. Please try again or contact support.');
+    resetForm() {
+        document.getElementById('wallet-address').value = '39zC2iwMf6qzmVVEcBdfXG6WpVn84Mwxzv';
+        document.getElementById('purchase-amount').value = '100';
+        document.getElementById('user-email').value = '';
+        this.validateInputs();
     }
 
     showLoader(show) {
         const btnText = document.querySelector('.btn-text');
         const btnLoader = document.querySelector('.btn-loader');
-        const purchaseBtn = document.getElementById('open-widget');
+        const purchaseBtn = document.getElementById('purchase-btn');
 
         if (show) {
             btnText.classList.add('hidden');
@@ -221,7 +236,7 @@ class WertIntegration {
         } else {
             btnText.classList.remove('hidden');
             btnLoader.classList.add('hidden');
-            purchaseBtn.disabled = false;
+            this.validateInputs(); // Re-enable button based on validation
         }
     }
 
@@ -234,6 +249,21 @@ class WertIntegration {
             overlay.classList.add('hidden');
             document.body.style.overflow = '';
         }
+    }
+
+    showError(message) {
+        const errorModal = document.getElementById('error-modal');
+        const errorMessage = document.getElementById('error-message');
+        
+        errorMessage.textContent = message;
+        errorModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    hideErrorModal() {
+        const errorModal = document.getElementById('error-modal');
+        errorModal.classList.add('hidden');
+        document.body.style.overflow = '';
     }
 
     closeWidget() {
@@ -253,7 +283,7 @@ class WertIntegration {
 
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new WertIntegration();
+    window.wertIntegration = new WertIntegration();
 });
 
 // Handle page unload
