@@ -10,7 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@wert-io/widget-initializer": "^6.8.1",
-    "vite": "^5.4.2"
+    "@wert-io/widget-initializer": "^6.8.1"
+  },
+  "devDependencies": {
+    "vite": "^7.1.3"
   }
 }
