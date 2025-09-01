@@ -1,5 +1,16 @@
 {
+  "name": "wert-fiat-onramp",
+  "version": "1.0.0",
+  "description": "Production-ready Wert.io fiat onramp widget",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
-    "@wert-io/widget-initializer": "^6.8.1"
+    "@wert-io/widget-initializer": "^6.8.1",
+    "vite": "^5.4.2"
   }
 }
